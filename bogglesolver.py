@@ -1,79 +1,47 @@
-import unittest
-from boggle_solver import Boggle
+class Boggle:
+    def __init__(self, grid, dictionary):
+        # normalize grid and dictionary to uppercase
+        self.grid = [[cell.upper() for cell in row] for row in grid]
+        self.dictionary = set(word.upper() for word in dictionary)
+        self.solutions = set()
+        self.rows = len(self.grid)
+        self.cols = len(self.grid[0]) if grid else 0
 
-class TestBoggleSolver(unittest.TestCase):
+        # build prefix set
+        self.prefixes = set()
+        for word in self.dictionary:
+            for i in range(1, len(word) + 1):
+                self.prefixes.add(word[:i])
 
-    def test_empty_dictionary(self):
-        grid = [["A", "B"], ["C", "D"]]
-        dictionary = []
-        solver = Boggle(grid, dictionary)
-        self.assertEqual(solver.getSolution(), [])
+    def getSolution(self):
+        self.solutions.clear()
+        for r in range(self.rows):
+            for c in range(self.cols):
+                self._dfs(r, c, "", set())
+        return sorted(self.solutions)
 
-    def test_empty_grid(self):
-        grid = []
-        dictionary = ["a", "ab", "abc"]
-        solver = Boggle(grid, dictionary)
-        self.assertEqual(solver.getSolution(), [])
+    def _dfs(self, r, c, path, visited):
+        if (r, c) in visited:
+            return
 
-    def test_single_cell_grid(self):
-        grid = [["A"]]
-        dictionary = ["a", "aa"]
-        solver = Boggle(grid, dictionary)
-        # no word ≥ 3 letters possible
-        self.assertEqual(solver.getSolution(), [])
+        path += self.grid[r][c]
+        visited.add((r, c))
 
-    def test_word_entire_grid(self):
-        grid = [["C","A"],["T","S"]]
-        dictionary = ["cats"]
-        solver = Boggle(grid, dictionary)
-        self.assertIn("cats", solver.getSolution())
+        # only accept dictionary words of length >= 3
+        if path in self.dictionary and len(path) >= 3:
+            self.solutions.add(path)
 
-    def test_no_words_found(self):
-        grid = [["X","Y"],["Z","W"]]
-        dictionary = ["cat", "dog"]
-        solver = Boggle(grid, dictionary)
-        self.assertEqual(solver.getSolution(), [])
+        if path not in self.prefixes:
+            visited.remove((r, c))
+            return
 
-    def test_duplicate_letters(self):
-        grid = [["A","A"],["A","A"]]
-        dictionary = ["aaa", "aaaa"]
-        solver = Boggle(grid, dictionary)
-        result = solver.getSolution()
-        self.assertIn("aaa", result)
-        self.assertIn("aaaa", result)
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < self.rows and 0 <= nc < self.cols:
+                    self._dfs(nr, nc, path, visited)
 
-    def test_multiple_valid_words(self):
-        grid = [["T","E"],["N","D"]]
-        dictionary = ["ten","end","tend"]
-        solver = Boggle(grid, dictionary)
-        result = solver.getSolution()
-        self.assertCountEqual(result, ["end","ten","tend"])
+        visited.remove((r, c))
 
-    def test_qu_special_case(self):
-        grid = [["Qu","A"],["R","T"]]
-        dictionary = ["quart","qua"]
-        solver = Boggle(grid, dictionary)
-        result = solver.getSolution()
-        self.assertIn("quart", result)
-        self.assertIn("qua", result)
-
-    def test_minimum_word_length(self):
-        grid = [["C","A"],["T","S"]]
-        dictionary = ["ca","cat","cats"]
-        solver = Boggle(grid, dictionary)
-        result = solver.getSolution()
-        self.assertNotIn("ca", result)  # shorter than 3
-        self.assertIn("cat", result)
-        self.assertIn("cats", result)
-
-    def test_case_insensitivity(self):
-        grid = [["T","E"],["N","D"]]
-        dictionary = ["Ten","End","TEND"]
-        solver = Boggle(grid, dictionary)
-        result = solver.getSolution()
-        # should match regardless of case
-        self.assertCountEqual(result, ["end","ten","tend"])
-
-
-if __name__ == "__main__":
-    unittest.main()
